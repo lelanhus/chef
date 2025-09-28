@@ -106,8 +106,7 @@ export async function chatAction({ request }: ActionFunctionArgs) {
       });
     }
     if (centitokensUsed >= centitokensQuota) {
-      if (!isPaidPlan && !hasApiKeySetForProvider(body.userApiKey, body.modelProvider)) {
-        // If they're not on a paid plan and don't have an API key set, return an error.
+      if (!hasApiKeySetForProvider(body.userApiKey, body.modelProvider) && !hasSystemApiKeyForProvider(body.modelProvider)) {
         logger.error(`No tokens available for ${deploymentName}: ${centitokensUsed} of ${centitokensQuota}`);
         return new Response(
           JSON.stringify({ code: 'no-tokens', error: noTokensText(centitokensUsed, centitokensQuota) }),
@@ -116,7 +115,6 @@ export async function chatAction({ request }: ActionFunctionArgs) {
           },
         );
       } else if (hasApiKeySetForProvider(body.userApiKey, body.modelProvider)) {
-        // If they have an API key set, use it. Otherwise, they use Convex tokens.
         useUserApiKey = true;
       }
     }
@@ -214,7 +212,6 @@ export async function chatAction({ request }: ActionFunctionArgs) {
   }
 }
 
-// Returns whether or not the user has an API key set for a given provider
 function hasApiKeySetForProvider(
   userApiKey:
     | { preference: 'always' | 'quotaExhausted'; value?: string; openai?: string; xai?: string; google?: string }
@@ -230,6 +227,22 @@ function hasApiKeySetForProvider(
       return userApiKey?.xai !== undefined;
     case 'Google':
       return userApiKey?.google !== undefined;
+    default:
+      return false;
+  }
+}
+
+function hasSystemApiKeyForProvider(provider: ModelProvider): boolean {
+  switch (provider) {
+    case 'Anthropic':
+    case 'Bedrock':
+      return !!getEnv('ANTHROPIC_API_KEY');
+    case 'OpenAI':
+      return !!getEnv('OPENAI_API_KEY');
+    case 'XAI':
+      return !!getEnv('XAI_API_KEY');
+    case 'Google':
+      return !!getEnv('GOOGLE_API_KEY') || !!getEnv('GOOGLE_VERTEX_CREDENTIALS_JSON');
     default:
       return false;
   }

@@ -229,9 +229,8 @@ export const Chat = memo(
     >(null);
     const teamSlug = useSelectedTeamSlug();
     const usage = useUsage({ teamSlug });
-    const forceDisable = usage && !usage.isLoadingUsage && !usage.isPaidPlan && usage.usagePercentage > 200;
-    // Normally set manually, but you can force it by going way over quota (useful simulating this state)
-    const disableChatMessage = forceDisable ? { type: 'ExceededQuota' as const } : _disableChatMessage;
+    // The server-side logic handles quota checks and API key fallbacks
+    const disableChatMessage = _disableChatMessage;
 
     const [sendMessageInProgress, setSendMessageInProgress] = useState(false);
 
@@ -265,8 +264,6 @@ export const Chat = memo(
             console.log(`Convex tokens used/quota: ${centitokensUsed} / ${centitokensQuota}`);
             if (isTeamDisabled) {
               setDisableChatMessage({ type: 'TeamDisabled', isPaidPlan });
-            } else if (!isPaidPlan && centitokensUsed > centitokensQuota && !hasAnyApiKeySet(apiKey)) {
-              setDisableChatMessage({ type: 'ExceededQuota' });
             } else {
               setDisableChatMessage(null);
             }
